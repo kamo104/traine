@@ -5,7 +5,7 @@ const path = require('path');
 const appDirectory = fs.realpathSync(process.cwd());
 
 module.exports = merge(common, {
-    entry: path.resolve(appDirectory, "src copy/app.ts"), //path to the main .ts file
+    //entry: path.resolve(appDirectory, "src copy/app.ts"), //path to the main .ts file
     context: __dirname,
     output: {
         //filename: '[name].bundle.js',

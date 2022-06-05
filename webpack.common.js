@@ -6,6 +6,7 @@ const appDirectory = fs.realpathSync(process.cwd());
 const webpack = require("webpack");
 const ammo = require('ammojs-typed');
 module.exports = {
+    entry: path.resolve(appDirectory, "src/app.ts"), //path to the main .ts file
     target: "web",
     resolve: {
         extensions: ["", ".tsx", ".ts", ".js"],

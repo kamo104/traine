@@ -7,11 +7,7 @@ const appDirectory = fs.realpathSync(process.cwd());
 module.exports = merge(common, {
   //entry: path.resolve(appDirectory, "src copy/app.ts"), //path to the main .ts file
     
-  entry: {
-    app: {
-      import: path.resolve(appDirectory, "src copy/app.ts"),
-    },
-  },
+  //entry: {app: {import: path.resolve(appDirectory, "src copy/app.ts"),},},
   resolve: {
     fallback: {
       'fs': false,
