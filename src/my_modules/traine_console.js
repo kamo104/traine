@@ -3,7 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TraineConsole = void 0;
 const readline = require('readline');
 class TraineConsole {
-    constructor(id_index, channelMap, timeManager) {
+    constructor(id_index, channelMap, timeManager, io) {
+        this.server = io;
         this.id_index = id_index;
         this.channelMap = channelMap;
         this.timeManager = timeManager;
@@ -34,6 +35,11 @@ class TraineConsole {
                 switch (fields[0]) {
                     case ("clear"): {
                         process.stdout.write('\x1Bc');
+                        break;
+                    }
+                    case ("exit"): {
+                        console.log("Server closed!!");
+                        process.exit();
                         break;
                     }
                     case ("kick"): {
@@ -107,18 +113,38 @@ class TraineConsole {
                             case ("cycle"): {
                                 switch (fields[2]) {
                                     case ("on"): {
-                                        this.timeManager.cycle.set(true);
+                                        if (!this.timeManager.cycle.get()) {
+                                            this.timeManager.cycle.set(true);
+                                            this.server.emit("cycleChange", true);
+                                            console.log("Time cycle is now on.");
+                                        }
+                                        else {
+                                            console.log("Time cycle was already on.");
+                                        }
                                         break;
                                     }
                                     case ("off"): {
-                                        this.timeManager.cycle.set(false);
+                                        if (this.timeManager.cycle.get()) {
+                                            this.timeManager.cycle.set(false);
+                                            this.server.emit("cycleChange", false);
+                                            console.log("Time cycle is now off.");
+                                        }
+                                        else {
+                                            console.log("Time cycle was already off.");
+                                        }
                                         break;
                                     }
                                 }
                                 break;
                             }
+                            case ("display"): {
+                                console.log("Current server time is: ", this.timeManager.getTime());
+                                break;
+                            }
                             case ("set"): {
                                 this.timeManager.setTime(fields[2]);
+                                this.server.emit("timeChange", fields[2]);
+                                console.log("Time set to: ", fields[2]);
                                 break;
                             }
                         }
@@ -126,13 +152,13 @@ class TraineConsole {
                     }
                     case ("help"): {
                         console.log("\n/kick [index] || all\nkicks player with a given index or all players \n" +
-                            "/stop \nstops the server \n" +
+                            "/stop||exit \nstops the server \n" +
                             "/players \ndisplays number of connected players and lists them \n" +
                             "/locate [index] || all \nlocate the player with the given index or all \n" +
                             "/teleport||tp [i1] [x] [y] [z] || [i1] [i2]\nteleports [i1]=index player to location 1.of [x] [y] [z] 2.of a player [i2] \n" +
                             "/clear \nclears the console \n" +
                             "/help \ndisplays available commnds \n" +
-                            "/time ( set [number] || day ) || ( cycle on || off )");
+                            "/time ( set [number] ) || ( cycle on || off ) || display");
                         break;
                     }
                 }

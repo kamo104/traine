@@ -1,6 +1,5 @@
 import { Server } from "socket.io"
-//import { Socket } from "socket.io/dist/socket";
-//import { DefaultEventsMap } from "socket.io/dist/typed-events"
+
 var http = require("http");
 var fs = require('fs');
 import { Semaphore } from "async-mutex"
@@ -73,7 +72,7 @@ io.on("connection", channel => {
 
 const timeManager = new TimeManager(true);
 
-const con = new TraineConsole(id_index,channelMap,timeManager);
+const con = new TraineConsole(id_index,channelMap,timeManager, io);
 
 
 const render_distance_sq = 275*275;

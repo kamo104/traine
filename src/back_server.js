@@ -55,7 +55,7 @@ io.on("connection", channel => {
     channel.on("position_update", handleUpdate);
 });
 const timeManager = new time_manager_1.TimeManager(true);
-const con = new traine_console_1.TraineConsole(id_index, channelMap, timeManager);
+const con = new traine_console_1.TraineConsole(id_index, channelMap, timeManager, io);
 const render_distance_sq = 275 * 275;
 function distance_sq(v1, v2) {
     return ((v1.x - v2.x) * (v1.x - v2.x) + (v1.z - v2.z) * (v1.z - v2.z));

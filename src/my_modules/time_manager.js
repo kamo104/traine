@@ -7,7 +7,6 @@ class CycleObject {
             this.state = state;
         else
             this.state = true;
-        return (this);
     }
     get() {
         return (this.state);
@@ -19,9 +18,7 @@ class CycleObject {
 exports.CycleObject = CycleObject;
 class TimeManager {
     constructor(cycleState, startingTime) {
-        const cycle = new CycleObject(cycleState);
-        this.cycle = cycle;
-        console.log(this.cycle);
+        this.cycle = new CycleObject(cycleState);
         if (startingTime)
             this.time = startingTime;
         else
@@ -29,25 +26,17 @@ class TimeManager {
         this.timeCycle();
     }
     setTime(time) {
-        switch (typeof (time)) {
-            case ("string"): {
-                break;
-            }
-            case ("number"): {
-                this.time = Number(time);
-                break;
-            }
-        }
+        this.time = Number(time);
     }
     getTime() {
         return this.time;
     }
-    timeAdd() {
-        if (this.cycle.get())
-            this.setTime(this.getTime() + 10 * 60 * 1000);
+    timeAdd(scope) {
+        if (scope.cycle.get())
+            scope.setTime(scope.getTime() + 10 * 60 * 1000);
     }
     timeCycle() {
-        setInterval(this.timeAdd, 10000);
+        setInterval(this.timeAdd, 10000, this);
     }
 }
 exports.TimeManager = TimeManager;

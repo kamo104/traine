@@ -15,37 +15,26 @@ export class CycleObject{
 
 export class TimeManager{
     
-    private cycleState:boolean;
     private time:number;
 
-    //static cycle = new CycleObject();
     cycle:CycleObject;
 
 
-    setTime(time:number|string){
-        switch(typeof(time)){
-            case("string"):{
-                break;
-            }
-            case("number"):{
-                this.time = Number(time);
-                break;
-            }
-        }
+    setTime(time:number){
+        this.time = Number(time);
     }
     getTime():number{
         return this.time;
     }
-    timeAdd():void{
-        if(this.cycle.get()) this.setTime(this.getTime()+10*60*1000);
+    timeAdd(scope:this):void{
+        if(scope.cycle.get()) scope.setTime(scope.getTime()+10*60*1000);
     }
     timeCycle():void{
-        setInterval(this.timeAdd,10000);
+        setInterval(this.timeAdd,10000,this);
     }
 
     constructor(cycleState:boolean, startingTime?:number){
         this.cycle = new CycleObject(cycleState);
-        // console.log(this.cycle)
         if(startingTime) this.time = startingTime;
         else this.time = Date.now();
         this.timeCycle();
