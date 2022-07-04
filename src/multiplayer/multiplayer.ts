@@ -3,24 +3,27 @@ import { Scene } from "@babylonjs/core/scene";
 import { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import { Vector3,Quaternion } from "@babylonjs/core/Maths/math"
 
+//physics
+import { PhysicsImpostor } from "@babylonjs/core/Physics/physicsImpostor";
+
 //shadows
 import { CascadedShadowGenerator } from "@babylonjs/core/Lights/Shadows/cascadedShadowGenerator"
 
 //gmath module
 import * as GMATH from "../gmath"
 
-//physics
-import { PhysicsImpostor } from "@babylonjs/core/Physics/physicsImpostor";
+
 
 //communication with backend
 import { io } from "socket.io-client"
+import { Socket } from "socket.io-client"
 
 import { player_data } from "./player_data";
 
 
 export class MPController{
     my_id:string;
-    channel:any;
+    channel:Socket;
     my_model:number;
 
     private scene:Scene;

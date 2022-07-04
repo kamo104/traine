@@ -2,11 +2,7 @@
 import { Vector3 } from "@babylonjs/core/Maths/math"
 import { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 
-// export type SimpleVector = {
-//     x:number;
-//     y:number;
-//     z:number;
-// }
+
 export class SimpleVector{
     x:number;
     y:number;
@@ -17,6 +13,7 @@ export class SimpleVector{
         this.z=z;
     }
 }
+
 export class SimpleQuaternion{
     x:number;
     y:number;

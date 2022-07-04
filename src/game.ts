@@ -52,6 +52,8 @@ import {DynamicMap} from "./map/map"
 //GUI
 import {Gui} from "./gui/gui";
 
+//timeManager
+import { TimeManager } from "./timeManager/time_manager"
 
 
 
@@ -64,11 +66,11 @@ export class Game{
     private gui:Gui;
     private my_model:number;
     private canvas:HTMLCanvasElement;
+    private timeManager:TimeManager;
 
     model_map:{[key:number]:string}
     channel:any;
     player: AbstractMesh;
-    //ground: AbstractMesh;
     camera: ArcRotateCamera;
     render_distance: number;
     physics_render_distance: number;
@@ -78,15 +80,22 @@ export class Game{
     mpController: MPController;
     dynamicMap: DynamicMap;
     skybox:Mesh;
-    time:number;
+
+    sun:Mesh;
+    sunLight:DirectionalLight;
 
     //game init
     async gameStart(){
         this.render_distance = 1000; //was 275 //500 for mid //testing 1k
         this.physics_render_distance = 275*1.5*1.5; // 50 for highqual 100 for low //120k for moderate //275 for mid
         //gameInit();
+
         await this.sceneInit();
         await this.loadPlayer();
+        
+        //timeManager initialization
+        this.timeManagerInit(true,Date.now());
+
         await this.meshesInit();
         
         //give controlls to player
@@ -96,36 +105,16 @@ export class Game{
         //await this.loadWater();
 
         this.player.physicsImpostor = new PhysicsImpostor(this.player, PhysicsImpostor.CylinderImpostor , { mass: 60, restitution: 0, friction: 1 }, this.scene);
-        //this.player.checkCollisions = true;
-        //this.player.physicsImpostor.velocityIterations = 100
         
         //movement handling
         this.controller = new Controller(this.scene, this.camera , this.player, 40);
         
-        //handles loading of other players
-        this.mpController = new MPController(this.player, this.shadow_generator,this.scene, this.render_distance,this.my_model, this.loaded_player_meshes);
-        
-        //teleport the player to desired location from server request
-        this.mpController.channel.on("teleport_request",(data)=>{
-            this.camera.inputs.attached.pointers.detachControl();
-            this.player.physicsImpostor.dispose();
-            this.player.position = new Vector3(data.position.x,data.position.y,data.position.z);
-            this.dynamicMap.mapLoadingLogic().finally(()=>{
-                this.assetsManager.load();
-                this.camera.inputs.attachInput(this.camera.inputs.attached.pointers);
-                this.player.physicsImpostor = new PhysicsImpostor(this.player, PhysicsImpostor.CapsuleImpostor, { mass: 60, restitution: 0, friction: 1 }, this.scene);
-            });
-            
-        });
-        this.mpController.channel.on("time",(data:number)=>{
-            this.time=data;
-        });
-        this.mpController.channel.on("chat_message", (message:{[key:string]:string})=>{
-            //this.gui.displayChatMessage(message);
-        });
+        //mp controller initialization
+        this.mpControllerInit();
 
         this.camera.attachControl(this.canvas,true,false);
     }
+
     //sets render distance, initializes scene, camera, skybox and fog, calls physics init as part of scene initialization, pointer lock and inspector
     async sceneInit(): Promise<void>{
         //set render distance
@@ -167,6 +156,59 @@ export class Game{
 
         //this.inspectorInit(this.scene); //debug
     }
+
+    //mpController init, adds routines and controller on game object
+    async mpControllerInit(): Promise<void>{
+        //handles loading of other players
+        this.mpController = new MPController(this.player, this.shadow_generator,this.scene, this.render_distance,this.my_model, this.loaded_player_meshes);
+        
+        //teleport the player to desired location from server request
+        this.mpController.channel.on("teleport_request",(data)=>{
+            this.camera.inputs.attached.pointers.detachControl();
+            this.player.physicsImpostor.dispose();
+            this.player.position = new Vector3(data.position.x,data.position.y,data.position.z);
+            this.dynamicMap.mapLoadingLogic().finally(()=>{
+                this.assetsManager.load();
+                this.camera.inputs.attachInput(this.camera.inputs.attached.pointers);
+                this.player.physicsImpostor = new PhysicsImpostor(this.player, PhysicsImpostor.CapsuleImpostor, { mass: 60, restitution: 0, friction: 1 }, this.scene);
+            });
+            
+        });
+        
+
+        this.mpController.channel.on("time",(data:number)=>{
+            this.timeManager.setTime(data);
+        });
+        this.mpController.channel.on("timeChange",(data:number)=>{
+            this.timeManager.setTime(data);
+            this.updateSky();
+            this.updateSky();
+        });
+        this.mpController.channel.on("cycleChange",(data:boolean)=>{
+
+            if(data) console.log("Day night cycle has been turned on");
+            else console.log("Day night cycle has been turned off");
+
+            this.timeManager.cycle.set(data);
+        });
+        this.mpController.channel.on("chat_message", (message:{[key:string]:string})=>{
+            //this.gui.displayChatMessage(message);
+        });
+
+        this.mpController.channel.on("timeResponse",(data:number)=>{
+            console.log("Got server time:", data);
+            this.timeManager.setTime(data);
+            this.updateSky();
+            this.updateSky();
+        });
+        this.mpController.channel.on("dayNightCycleResponse", (data:boolean)=>{
+            console.log("Got server day night cycle:", data);
+            this.timeManager.cycle.set(data);
+        })
+        this.mpController.channel.emit("timeRequest", {reliable:true});
+        this.mpController.channel.emit("dayNightCycleRequest", {reliable:true});
+    }
+
     //camera init, returns camera object
     cameraInit(scene:Scene): ArcRotateCamera{
 
@@ -193,6 +235,7 @@ export class Game{
         
         return(camera);
     }
+
     //PHYSICS INIT needs camera present
     async physicsInit(): Promise<void>{
         const ammo = await Ammo();
@@ -212,6 +255,7 @@ export class Game{
         //this.scene.getPhysicsEngine().setSubTimeStep(2);
         
     }
+
     //pointer lock
     private pointerLock(): void{
         //We start without being locked.
@@ -296,6 +340,41 @@ export class Game{
         p.receiveShadows = true;
         this.player = p;
     }
+
+    //initializes timeManager on the game object
+    timeManagerInit(cycleState:boolean,startingTime?:number){
+        this.timeManager = new TimeManager(cycleState,startingTime);
+    }
+
+    //updates the sky on a given time frame
+    updateSky(){
+        let date = new Date()
+        date.setTime(this.timeManager.getTime())
+        //51.1657° N, 10.4515° E germany //
+        let sun_pos = SUNCALC.getPosition(date,51.1657,10.4515)
+        let sun_on_dome = new Vector3(Math.sin(sun_pos.azimuth)*(this.render_distance),Math.sin(sun_pos.altitude)*(this.render_distance),-Math.cos(sun_pos.altitude)*(this.render_distance)) 
+
+        sun_on_dome.addInPlace(this.player.absolutePosition)
+        sun_on_dome.y -= this.player.absolutePosition.y
+
+        //sun_on_dome.y -= 1.7;
+        if(sun_on_dome.y>-10){
+            
+            this.sunLight.intensity = 1;
+            this.sunLight.setDirectionToTarget(this.player.absolutePosition.subtractFromFloats(0,this.player.absolutePosition.y,0)); //abs pos player
+            this.sunLight.position = sun_on_dome
+            
+        }
+        else{
+            this.sunLight.intensity = 0;
+            //light.setDirectionToTarget(this.player.absolutePosition);
+            //light.position = sun_on_dome.add(this.player.position)
+        }
+        this.sky_material.sunPosition = sun_on_dome
+        this.skybox.position = this.player.absolutePosition
+        this.sun.position = sun_on_dome
+    }
+
     //lights, shadows, basic scene models like cube and spheres, sun movement
     async meshesInit(): Promise<void>{
         
@@ -307,7 +386,7 @@ export class Game{
         var light = new DirectionalLight("dir01", new Vector3(1, -1, 0), this.scene);
         light.position = new Vector3(0, 40, 0);
         light.autoCalcShadowZBounds = true;
-
+        this.sunLight = light;
 
         this.shadow_generator = new CascadedShadowGenerator(4096, light);
         this.shadow_generator.addShadowCaster(this.player);
@@ -317,8 +396,6 @@ export class Game{
         this.shadow_generator.lambda = 1;
         this.shadow_generator.transparencyShadow = true
         // this.shadow_generator.autoCalcDepthBounds = true;
-
-
        
 
         //sun reflection probe
@@ -327,51 +404,29 @@ export class Game{
         this.camera.customRenderTargets.push(rp.cubeTexture)
         //this.scene.environmentTexture = rp.cubeTexture;
         
-        var sun: Mesh = MeshBuilder.CreateSphere("sun", { diameter: 10 }, this.scene);
+        this.sun = MeshBuilder.CreateSphere("sun", { diameter: 10 }, this.scene);
 
-        this.time =Date.now();
+
         var j=0;
-        let date = new Date();
-        let sun_pos = SUNCALC.getPosition(date,51.1657,10.4515);
-        let sun_on_dome = new Vector3(Math.sin(sun_pos.azimuth)*(this.render_distance),Math.sin(sun_pos.altitude)*(this.render_distance),-Math.cos(sun_pos.altitude)*(this.render_distance))
+        // let date = new Date();
+        // let sun_pos = SUNCALC.getPosition(date,51.1657,10.4515);
+        // let sun_on_dome = new Vector3(Math.sin(sun_pos.azimuth)*(this.render_distance),Math.sin(sun_pos.altitude)*(this.render_distance),-Math.cos(sun_pos.altitude)*(this.render_distance))
 	    let pixels: Promise<ArrayBufferView>;
-        let player_rotation;
-        this.scene.onBeforeRenderObservable.add(()=>{
-            if(j%10==0){
-                date = new Date()
-                date.setTime(this.time)
-                //51.1657° N, 10.4515° E germany //
-                sun_pos = SUNCALC.getPosition(date,51.1657,10.4515)
-                
-                sun_on_dome.set(Math.sin(sun_pos.azimuth)*(this.render_distance),Math.sin(sun_pos.altitude)*(this.render_distance),-Math.cos(sun_pos.altitude)*(this.render_distance)) 
-                // const sun_on_dome = new Vector3(Math.sin(sun_pos.azimuth)*(this.render_distance),Math.sin(sun_pos.altitude)*(this.render_distance),-Math.cos(sun_pos.altitude)*(this.render_distance))
-                
-                sun_on_dome.addInPlace(this.player.absolutePosition)
-                sun_on_dome.y -= this.player.absolutePosition.y
+        let player_rotation: number;
 
-                //sun_on_dome.y -= 1.7;
-                if(sun_on_dome.y>-10){
-                    
-                    light.intensity = 1;
-                    light.setDirectionToTarget(this.player.absolutePosition.subtractFromFloats(0,this.player.absolutePosition.y,0)); //abs pos player
-                    light.position = sun_on_dome
-                    
-                }
-                else{
-                    light.intensity = 0;
-                    //light.setDirectionToTarget(this.player.absolutePosition);
-                    //light.position = sun_on_dome.add(this.player.position)
-                }
-                this.sky_material.sunPosition = sun_on_dome
-                this.skybox.position = this.player.absolutePosition
-                sun.position = sun_on_dome
-                
+        const sun_update_interval = 10;
+        const fog_update_interval = 52;
+
+        // adds the engine routine responsible for updating fog and sun position
+        this.scene.onBeforeRenderObservable.add(()=>{
+            if(j%sun_update_interval==0 && this.timeManager.cycle.get()){
+                this.updateSky();
             }
-            if(j%52==0){
+            if(j%fog_update_interval==0){
                 rp.position = this.player.position
 
                 if(this.player.rotationQuaternion) player_rotation = this.player.rotationQuaternion.toEulerAngles().y%(Math.PI*2);
-                else player_rotation=this.player.rotation;
+                else player_rotation=this.player.rotation.y;
                 
                 if(player_rotation<0){
                     player_rotation = 2*Math.PI+player_rotation;
@@ -390,15 +445,16 @@ export class Game{
                     pixels = rp.cubeTexture.readPixels(0,0)
                 }
                 //console.log(pixels, player_rotation)
-                if(pixels)
-                pixels.then((res)=>{
-                    this.scene.fogColor = new Color3(res[0]/255, res[1]/255, res[2]/255);
-                })
+                if(pixels){
+                    pixels.then((res)=>{
+                        this.scene.fogColor = new Color3(res[0]/255, res[1]/255, res[2]/255);
+                    })
+                }
             }
 
             j+=1;
 
-            this.time+=1000;
+            if(this.timeManager.cycle.get())this.timeManager.setTime(this.timeManager.getTime()+1000);
         })
         
     }
