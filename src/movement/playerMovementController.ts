@@ -1,7 +1,7 @@
 //shared across all modules
 import { Scene } from "@babylonjs/core/scene";
 import { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
-import { Vector3 } from "@babylonjs/core/Maths/math";
+import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math";
 
 //camera module
 import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
@@ -38,44 +38,52 @@ export class Controller{
         this.camera.target =this.character.getChildMeshes()[0].getAbsolutePosition()
 
         //-this.startingCameraRotation from alpha
-        var newRotation = (2*Math.PI)*Math.floor((this.camera.alpha-this.startingCameraRotation)/(2*Math.PI)) -(this.camera.alpha-this.startingCameraRotation);
-        var newVector = Vector3.Zero();// = this.character.rotationQuaternion.toEulerAngles()
-        newVector.y = newRotation;
-        newVector.x = 0;
-        newVector.z = 0;
+        let newRotation = (2*Math.PI)*Math.floor((this.camera.alpha-this.startingCameraRotation)/(2*Math.PI)) -(this.camera.alpha-this.startingCameraRotation);
+        let newVector = new Vector3(0,newRotation,0);// = this.character.rotationQuaternion.toEulerAngles()
 
-        this.scene.onPointerDown
+
+        //this.scene.onPointerDown
         //update_character rotation based on camera alpha
+
         this.character.rotationQuaternion = newVector.toQuaternion();
     }
     private player_input(){
         //var massMultiplier:number;
         var isJumping: boolean = false;
+        const jumpTreshold = 0.1;
         //let jumpKeyDown = false;
 
         var ray:Ray;
         var hit:PickingInfo;
         const predicate = ((mesh:AbstractMesh)=>{
-            if(mesh==this.character){return(false)}
+            if(mesh==this.character||mesh.name=="head"){return(false)}
             return(true);
         })
-        //jumping ray
+        //rays used to check whether a player is under the map and if is jumping
         this.scene.registerBeforeRender(()=> {
             //pick from a higher up position to avoid negative results
             const pos = this.character.absolutePosition;
             pos.y+=1;
             ray = new Ray(pos, new Vector3(0,-1,0), 100);
             hit = this.scene.pickWithRay(ray,predicate);
-            if (hit.distance<1.01){
+            
+
+            //if he's under the map, tp him to the top
+            const rayUp = new Ray(pos, new Vector3(0,1,0),100);
+            const hitUp = this.scene.pickWithRay(rayUp,predicate);
+            if(hitUp.pickedMesh && hitUp.pickedMesh.name.substring(0,2)=="eu") this.character.position = hitUp.pickedPoint;
+
+            if (hit.distance<1+jumpTreshold){
                 isJumping = false;
             }
             else{
+                
                 // ?? add terrain check (if climbing sloped terrain allow for )
                 pos.y-=1;
                 ray = new Ray(pos, new Vector3(0,0,1), 10);
                 const hit2 = this.scene.pickWithRay(ray,predicate);
                 
-                if (hit2.distance<1.01 && hit2.distance>0){ // ?? not hit distance but angle from picked point to bottom point
+                if (hit2.distance<1+jumpTreshold && hit2.distance>0){ // ?? not hit distance but angle from picked point to bottom point
                     //isJumping = false;
                 }
                 else{
@@ -83,19 +91,12 @@ export class Controller{
                 }
                 // ?? add terrain check (if climbing sloped terrain allow for )                
             }
-        })    
-        const jump = (()=>{
-            const center = this.character.physicsImpostor.getObjectCenter();
-            const bottom = new Vector3(center.x,center.y - this.character.physicsImpostor.getRadius(),center.z);
-            const direction = new Vector3(0,this.character.physicsImpostor.mass*10*40,0);
-
-            //default for vehicles
-            this.character.physicsImpostor.applyForce(direction, bottom);
         })
+
         this.scene.actionManager.registerAction(new ExecuteCodeAction(ActionManager.OnKeyDownTrigger, (evt)=> {
             this.inputMap[evt.sourceEvent.key] = evt.sourceEvent.type == "keydown";
             if (evt.sourceEvent.type == "keydown" && evt.sourceEvent.code == "Space" && !isJumping) {
-                jump();
+                this.movementHandler.jump(this.scene.getAnimationRatio());
                 isJumping = true;
             }
         }));
@@ -104,41 +105,53 @@ export class Controller{
         }));
 
 
-        this.state = "running";
+        this.state = "walking";
         //movement mapping
+        let w:number=0,a:number=0,s:number=0,d:number=0;
         this.scene.onBeforeRenderObservable.add(()=> {
-
+            w=0,a=0,s=0,d=0;
             if(this.inputMap["Shift"]) this.state = "running";
             else this.state = "walking";
             switch(this.state){
                 case("walking"):{
                     if(this.inputMap["w"]){
-                        this.movementHandler.walkForward(this.scene.getAnimationRatio());
+                        w=1;
+                        //this.movementHandler.walkForward(this.scene.getAnimationRatio());
                     }
                     if(this.inputMap["a"]){
-                        this.movementHandler.walkLeft(this.scene.getAnimationRatio());
+                        a=1;
+                        //this.movementHandler.walkLeft(this.scene.getAnimationRatio());
                     } 
                     if(this.inputMap["s"]){
-                        this.movementHandler.walkBack(this.scene.getAnimationRatio());
+                        s=1;
+                        //this.movementHandler.walkBack(this.scene.getAnimationRatio());
                     } 
                     if(this.inputMap["d"]){
-                        this.movementHandler.walkRight(this.scene.getAnimationRatio());
+                        d=1;
+                        //this.movementHandler.walkRight(this.scene.getAnimationRatio());
                     }
+                    this.movementHandler.walk({"forward":w,"back":s,"left":a,"right":d},this.scene.getAnimationRatio()*1.5)
                     break;
                 }
                 case("running"):{
+                    
                     if(this.inputMap["w"]){
-                        this.movementHandler.walkForward(this.scene.getAnimationRatio()*2);
+                        w=1;
+                        //this.movementHandler.walkForward(this.scene.getAnimationRatio()*2);
                     }
                     if(this.inputMap["a"]){
-                        this.movementHandler.walkLeft(this.scene.getAnimationRatio()*2);
+                        a=1;
+                        //this.movementHandler.walkLeft(this.scene.getAnimationRatio()*2);
                     } 
                     if(this.inputMap["s"]){
-                        this.movementHandler.walkBack(this.scene.getAnimationRatio()*2);
+                        s=1;
+                        //this.movementHandler.walkBack(this.scene.getAnimationRatio()*2);
                     } 
                     if(this.inputMap["d"]){
-                        this.movementHandler.walkRight(this.scene.getAnimationRatio()*2);
+                        d=1;
+                        //this.movementHandler.walkRight(this.scene.getAnimationRatio()*2);
                     }
+                    this.movementHandler.walk({"forward":w,"back":s,"left":a,"right":d},this.scene.getAnimationRatio()*2)
                     break;
                 }
                 case("driving"):{
@@ -158,7 +171,7 @@ export class Controller{
                 }
             }
             this.update_camera();
-            GMATH.normalizeToMaxSpeed(this.character,this.characterSpeed);
+            GMATH.normalizeXZToMaxSpeed(this.character,this.characterSpeed);
                     
             }
         );
@@ -218,7 +231,7 @@ export class Controller{
         this.character = character;
         camera.target = this.character.getChildMeshes()[0].absolutePosition;
         camera.beta = Math.PI/3;
-        camera.alpha = this.character.rotationQuaternion.toEulerAngles().y+Math.PI*1/2;
+        if(this.character.rotationQuaternion) camera.alpha = this.character.rotationQuaternion.toEulerAngles().y+Math.PI*1/2;
         this.camera = camera;
         this.startingCameraRotation = camera.alpha;
         this.characterSpeed = characterSpeed;
@@ -227,7 +240,6 @@ export class Controller{
         this.inputMap = {};
         this.player_input();
         this.addMobileMovement();
-        
         };
 };
 

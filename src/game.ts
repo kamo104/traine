@@ -16,9 +16,13 @@ import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent"
 //physics
 import { PhysicsImpostor } from "@babylonjs/core/Physics/physicsImpostor"
 import "@babylonjs/core/Collisions/collisionCoordinator";
-import { AmmoJSPlugin } from "@babylonjs/core/Physics"
-import Ammo from 'ammo.js'
 
+import { AmmoJSPlugin } from "@babylonjs/core/Physics"
+//import  Ammo  from 'ammo.js'
+import Ammo  from "ammojs-typed"
+//import { CannonJSPlugin } from "@babylonjs/core"
+//import * as CANNON from "cannon-es"
+//window.CANNON = CANNON;
 
 //camera module
 import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera"
@@ -50,6 +54,7 @@ import {Gui} from "./gui/gui";
 
 
 
+
 export class Game{
     //things game needs before being loaded 
     private loaded_player_meshes:{[key:string]:AbstractMesh};
@@ -77,8 +82,8 @@ export class Game{
 
     //game init
     async gameStart(){
-        this.render_distance = 500; //was 275 //120k for moderate //500 for mid
-        this.physics_render_distance = 275; // 50 for highqual 100 for low //120k for moderate
+        this.render_distance = 1000; //was 275 //500 for mid //testing 1k
+        this.physics_render_distance = 275*1.5*1.5; // 50 for highqual 100 for low //120k for moderate //275 for mid
         //gameInit();
         await this.sceneInit();
         await this.loadPlayer();
@@ -90,10 +95,12 @@ export class Game{
         await this.dynamicMap.loadMap()
         //await this.loadWater();
 
-        this.player.physicsImpostor = new PhysicsImpostor(this.player, PhysicsImpostor.CapsuleImpostor, { mass: 60, restitution: 0, friction: 1 }, this.scene);
+        this.player.physicsImpostor = new PhysicsImpostor(this.player, PhysicsImpostor.CylinderImpostor , { mass: 60, restitution: 0, friction: 1 }, this.scene);
+        //this.player.checkCollisions = true;
+        //this.player.physicsImpostor.velocityIterations = 100
         
         //movement handling
-        this.controller = new Controller(this.scene, this.camera , this.player, 10);
+        this.controller = new Controller(this.scene, this.camera , this.player, 40);
         
         //handles loading of other players
         this.mpController = new MPController(this.player, this.shadow_generator,this.scene, this.render_distance,this.my_model, this.loaded_player_meshes);
@@ -146,7 +153,7 @@ export class Game{
         
 
         this.scene.fogMode = Scene.FOGMODE_LINEAR; //was Scene.FOGMODE_LINEAR
-        this.scene.fogDensity = 1;
+        this.scene.fogDensity = 10;
         this.scene.fogStart = 100; 
         this.scene.fogEnd = skybox_cutoff;
         this.scene.fogEnabled = true;
@@ -177,7 +184,7 @@ export class Game{
         //camera.attachControl(canvas, true);
         camera.maxZ = this.render_distance+500;
         camera.checkCollisions = true
-        camera.collisionRadius = new Vector3(0.5,1,0.5);
+        camera.collisionRadius = new Vector3(0.5,0.5,0.5);
 
         //custom camera movement
         //this.pointer_inputs = camera.inputs.attached.pointers;
@@ -190,9 +197,19 @@ export class Game{
     async physicsInit(): Promise<void>{
         const ammo = await Ammo();
         var physicsPlugin = new AmmoJSPlugin(true, ammo);
-        //physicsPlugin.setMaxSteps(1000);
-        //physicsPlugin.setTimeStep(1000/60)
-        this.scene.enablePhysics(new Vector3(0,-9.81,0), physicsPlugin);
+
+
+        //var physicsPlugin = new CannonJSPlugin(true,10,CANNON)
+        //var physicsPlugin = new CannonJSPlugin()
+        //physicsPlugin.setTimeStep(1/60)
+        //physicsPlugin.setFixedTimeStep(1/120)
+        //physicsPlugin.setMaxSteps(100000);
+        
+
+        //this.scene.enablePhysics(new Vector3(0,-9.81,0), physicsPlugin);
+        this.scene.enablePhysics(new Vector3(0,-9.807,0),physicsPlugin);
+        //this.scene.getPhysicsEngine().setTimeStep(1/60)
+        //this.scene.getPhysicsEngine().setSubTimeStep(2);
         
     }
     //pointer lock
@@ -236,14 +253,14 @@ export class Game{
     //inspector init, nothing fancy
     async inspectorInit(scene:Scene): Promise<void>{
 
-        await import("@babylonjs/core")
-        await import("@babylonjs/core/Debug/debugLayer")
-        await import("@babylonjs/inspector");
+        // await import("@babylonjs/core")
+        // await import("@babylonjs/core/Debug/debugLayer")
+        // await import("@babylonjs/inspector");
 
         //debug
-        await import("@babylonjs/node-editor")
-        await import("@babylonjs/core/Loading/sceneLoader")
-        await import("@babylonjs/loaders/glTF")
+        //await import("@babylonjs/node-editor")
+        //await import("@babylonjs/core/Loading/sceneLoader")
+        //await import("@babylonjs/loaders/glTF")
 
         window.addEventListener("keydown", (ev) => {
             // Shift+Ctrl+Alt+I
@@ -314,14 +331,20 @@ export class Game{
 
         this.time =Date.now();
         var j=0;
-	    this.scene.onBeforeRenderObservable.add(()=>{
+        let date = new Date();
+        let sun_pos = SUNCALC.getPosition(date,51.1657,10.4515);
+        let sun_on_dome = new Vector3(Math.sin(sun_pos.azimuth)*(this.render_distance),Math.sin(sun_pos.altitude)*(this.render_distance),-Math.cos(sun_pos.altitude)*(this.render_distance))
+	    let pixels: Promise<ArrayBufferView>;
+        let player_rotation;
+        this.scene.onBeforeRenderObservable.add(()=>{
             if(j%10==0){
-                var date = new Date()
+                date = new Date()
                 date.setTime(this.time)
                 //51.1657° N, 10.4515° E germany //
-                const sun_pos = SUNCALC.getPosition(date,51.1657,10.4515)
+                sun_pos = SUNCALC.getPosition(date,51.1657,10.4515)
                 
-                const sun_on_dome = new Vector3(Math.sin(sun_pos.azimuth)*(this.render_distance),Math.sin(sun_pos.altitude)*(this.render_distance),Math.cos(sun_pos.altitude)*(this.render_distance))
+                sun_on_dome.set(Math.sin(sun_pos.azimuth)*(this.render_distance),Math.sin(sun_pos.altitude)*(this.render_distance),-Math.cos(sun_pos.altitude)*(this.render_distance)) 
+                // const sun_on_dome = new Vector3(Math.sin(sun_pos.azimuth)*(this.render_distance),Math.sin(sun_pos.altitude)*(this.render_distance),-Math.cos(sun_pos.altitude)*(this.render_distance))
                 
                 sun_on_dome.addInPlace(this.player.absolutePosition)
                 sun_on_dome.y -= this.player.absolutePosition.y
@@ -332,26 +355,28 @@ export class Game{
                     light.intensity = 1;
                     light.setDirectionToTarget(this.player.absolutePosition.subtractFromFloats(0,this.player.absolutePosition.y,0)); //abs pos player
                     light.position = sun_on_dome
-                    this.sky_material.sunPosition = sun_on_dome
-                    this.skybox.position = this.player.absolutePosition
-                    sun.position = sun_on_dome
+                    
                 }
                 else{
                     light.intensity = 0;
                     //light.setDirectionToTarget(this.player.absolutePosition);
                     //light.position = sun_on_dome.add(this.player.position)
-                    this.sky_material.sunPosition = sun_on_dome
-                    sun.position = sun_on_dome
                 }
+                this.sky_material.sunPosition = sun_on_dome
+                this.skybox.position = this.player.absolutePosition
+                sun.position = sun_on_dome
                 
             }
             if(j%52==0){
                 rp.position = this.player.position
-                var player_rotation = this.player.rotationQuaternion.toEulerAngles().y%(Math.PI*2);
+
+                if(this.player.rotationQuaternion) player_rotation = this.player.rotationQuaternion.toEulerAngles().y%(Math.PI*2);
+                else player_rotation=this.player.rotation;
+                
                 if(player_rotation<0){
                     player_rotation = 2*Math.PI+player_rotation;
                 }
-                var pixels; //:Promise<>
+                
                 if((player_rotation<=Math.PI*2&&player_rotation>=Math.PI*7/4)||(player_rotation>=0&&player_rotation<=Math.PI/4)){
                     pixels = rp.cubeTexture.readPixels(2,0)
                 }
@@ -365,7 +390,7 @@ export class Game{
                     pixels = rp.cubeTexture.readPixels(0,0)
                 }
                 //console.log(pixels, player_rotation)
-                
+                if(pixels)
                 pixels.then((res)=>{
                     this.scene.fogColor = new Color3(res[0]/255, res[1]/255, res[2]/255);
                 })

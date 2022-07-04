@@ -4,7 +4,7 @@ const fs = require("fs");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const appDirectory = fs.realpathSync(process.cwd());
 const webpack = require("webpack");
-const ammo = require('ammojs-typed');
+//const ammo = require('ammojs-typed');
 module.exports = {
     entry: path.resolve(appDirectory, "src/app.ts"), //path to the main .ts file
     target: "web",
@@ -26,7 +26,7 @@ module.exports = {
     },
     externals: {
         cannon: "CANNON",
-        ammo: "Ammo"
+        //ammo: "Ammo"
     },
     
     plugins: [

@@ -4,43 +4,45 @@ import * as GMATH from "../gmath"
 //shared across all modules
 import { Vector3 } from "@babylonjs/core/Maths/math";
 import { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
+import { Matrix } from "@babylonjs/core/Maths/math"
+import { Axis } from "@babylonjs/core/Maths/math";
 
 export function driveForward(character:AbstractMesh){
-    const massMultiplier = character.physicsImpostor.mass*10;
+    const mass = character.physicsImpostor.mass*10;
     const center = character.physicsImpostor.getObjectCenter();
     const bottom = new Vector3(center.x,center.y - character.physicsImpostor.getRadius(),center.z);
     const y = character.absoluteRotationQuaternion.toEulerAngles().y;
-    const direction = new Vector3(massMultiplier*Math.sin(y),0,massMultiplier*Math.cos(y));
+    const direction = new Vector3(mass*Math.sin(y),0,mass*Math.cos(y));
 
     //default for vehicles
     character.physicsImpostor.applyForce(direction, bottom);
 };
 export function driveBack(character:AbstractMesh){
-    const massMultiplier = character.physicsImpostor.mass*10;
+    const mass = character.physicsImpostor.mass*10;
     const center = character.physicsImpostor.getObjectCenter();
     const bottom = new Vector3(center.x,center.y - character.physicsImpostor.getRadius(),center.z);
     const y = character.absoluteRotationQuaternion.toEulerAngles().y;
-    const direction = new Vector3(massMultiplier*-Math.sin(y),0,massMultiplier*-Math.cos(y));
+    const direction = new Vector3(mass*-Math.sin(y),0,mass*-Math.cos(y));
 
     //default for vehicles
     character.physicsImpostor.applyForce(direction, bottom);
 };
 export function driveLeft(character:AbstractMesh){
-    const massMultiplier = character.physicsImpostor.mass*10;
+    const mass = character.physicsImpostor.mass*10;
     const center = character.physicsImpostor.getObjectCenter();
     const bottom = new Vector3(center.x,center.y - character.physicsImpostor.getRadius(),center.z);
     const y = character.absoluteRotationQuaternion.toEulerAngles().y;
-    const direction = new Vector3(massMultiplier*-Math.cos(y),0,massMultiplier*Math.sin(y));
+    const direction = new Vector3(mass*-Math.cos(y),0,mass*Math.sin(y));
 
     //default for vehicles
     character.physicsImpostor.applyForce(direction, bottom);
 };
 export function driveRight(character:AbstractMesh){
-    const massMultiplier = character.physicsImpostor.mass*10;
+    const mass = character.physicsImpostor.mass*10;
     const center = character.physicsImpostor.getObjectCenter();
     const bottom = new Vector3(center.x,center.y - character.physicsImpostor.getRadius(),center.z);
     const y = character.absoluteRotationQuaternion.toEulerAngles().y;
-    const direction = new Vector3(massMultiplier*Math.cos(y),0,massMultiplier*-Math.sin(y));
+    const direction = new Vector3(mass*Math.cos(y),0,mass*-Math.sin(y));
     
     //default for vehicles
     character.physicsImpostor.applyForce(direction, bottom);
@@ -108,15 +110,16 @@ export function moveInDirection(character:AbstractMesh,point:Vector3){
 export class movementHandler{
     character:AbstractMesh;
     characterSpeed:number;
-    massMultiplier:number;
+    mass:number;
     pointToMove: Vector3;
     move:boolean;
+    velocity:Vector3;
 
     driveForward(amount:number){
         const center = this.character.physicsImpostor.getObjectCenter();
         const bottom = new Vector3(center.x,center.y - this.character.physicsImpostor.getRadius(),center.z);
         const y = this.character.absoluteRotationQuaternion.toEulerAngles().y;
-        const direction = new Vector3(this.massMultiplier*Math.sin(y),0,this.massMultiplier*Math.cos(y));
+        const direction = new Vector3(this.mass*Math.sin(y),0,this.mass*Math.cos(y));
     
         //default for vehicles
         this.character.physicsImpostor.applyForce(direction, bottom);
@@ -125,7 +128,7 @@ export class movementHandler{
         const center = this.character.physicsImpostor.getObjectCenter();
         const bottom = new Vector3(center.x,center.y - this.character.physicsImpostor.getRadius(),center.z);
         const y = this.character.absoluteRotationQuaternion.toEulerAngles().y;
-        const direction = new Vector3(this.massMultiplier*-Math.sin(y),0,this.massMultiplier*-Math.cos(y));
+        const direction = new Vector3(this.mass*-Math.sin(y),0,this.mass*-Math.cos(y));
     
         //default for vehicles
         this.character.physicsImpostor.applyForce(direction, bottom);
@@ -134,7 +137,7 @@ export class movementHandler{
         const center = this.character.physicsImpostor.getObjectCenter();
         const bottom = new Vector3(center.x,center.y - this.character.physicsImpostor.getRadius(),center.z);
         const y = this.character.absoluteRotationQuaternion.toEulerAngles().y;
-        const direction = new Vector3(this.massMultiplier*-Math.cos(y),0,this.massMultiplier*Math.sin(y));
+        const direction = new Vector3(this.mass*-Math.cos(y),0,this.mass*Math.sin(y));
     
         //default for vehicles
         this.character.physicsImpostor.applyForce(direction, bottom);
@@ -143,7 +146,7 @@ export class movementHandler{
         const center = this.character.physicsImpostor.getObjectCenter();
         const bottom = new Vector3(center.x,center.y - this.character.physicsImpostor.getRadius(),center.z);
         const y = this.character.absoluteRotationQuaternion.toEulerAngles().y;
-        const direction = new Vector3(this.massMultiplier*Math.cos(y),1,this.massMultiplier*-Math.sin(y));
+        const direction = new Vector3(this.mass*Math.cos(y),1,this.mass*-Math.sin(y));
         
         //default for vehicles
         this.character.physicsImpostor.applyForce(direction, bottom);
@@ -183,14 +186,13 @@ export class movementHandler{
         this.character.movePOV(amount*1/15,0,0);
     };
     walkRight(amount:number){
-        /*
-        const center = character.physicsImpostor.getObjectCenter();
-        const bottom = new Vector3(center.x,center.y - character.physicsImpostor.getRadius(),center.z);
-        const y = character.absoluteRotationQuaternion.toEulerAngles().y;
-        const direction = new Vector3(Math.cos(y)/15,0,-Math.sin(y)/15);
-        character.moveWithCollisions(direction);
-        */
         
+        //const center = this.character.physicsImpostor.getObjectCenter();
+        //const bottom = new Vector3(center.x,center.y - character.physicsImpostor.getRadius(),center.z);
+        //const y = this.character.absoluteRotationQuaternion.toEulerAngles().y;
+        //const direction = new Vector3(Math.cos(y)/15,0,-Math.sin(y)/15);
+        //this.character.moveWithCollisions(direction);
+
         this.character.movePOV(amount*-1/15,0,0);
     };
     moveInDirection(point:Vector3){
@@ -204,12 +206,55 @@ export class movementHandler{
         const direction = new Vector3(final.x,0.1,final.z); // /15
         this.character.moveWithCollisions(direction);
     };
+    walk(dirs:{"forward":number,"back":number,"left":number,"right":number},amount:number){
+        const direction:Vector3=new Vector3(0,0,0);
+        //let velocity:Vector3=new Vector3(0,0,0);
+        direction.x = -(Number(dirs.forward) - Number(dirs.back));
+        direction.z = -(Number(dirs.right) - Number(dirs.left));
+        direction.normalize();
 
-    constructor(character:AbstractMesh,characterSpeed:number,massMultiplier:number){
+        this.velocity.x = 0;
+        this.velocity.z = 0;
+        if (dirs.right || dirs.left) this.velocity.z = direction.z * amount*66/600;
+        if (dirs.forward || dirs.back) this.velocity.x = direction.x * amount*66/600;
+        
+        const viewAngleY = this.character.rotationQuaternion.toEulerAngles().y+3*Math.PI/2 ;
+        const rotationAxis = Matrix.RotationAxis(Axis.Y, viewAngleY);
+        
+        const rotatedVelocity = Vector3.TransformCoordinates(this.velocity.multiplyByFloats(1, Math.floor(amount*66/10), 1), rotationAxis);
+        this.character.physicsImpostor.setAngularVelocity(new Vector3(0,0,0));
+        if (this.velocity.z !== 0 || this.velocity.x !== 0) {
+            this.character.physicsImpostor.wakeUp();
+            const old = this.character.physicsImpostor.getLinearVelocity();
+            old.x = 0;
+            old.z = 0;
+            
+            const add = old.add(rotatedVelocity.scale(amount*this.characterSpeed*3/4))
+            this.character.physicsImpostor.setLinearVelocity(add);
+
+        }
+        else {
+            //if (onObject) this.character.physicsImpostor.sleep();
+            const old = this.character.physicsImpostor.getLinearVelocity();
+            old.x = 0;
+            old.z = 0;
+            this.character.physicsImpostor.setLinearVelocity(old);
+
+        } 
+    }
+    jump(animationRatio:number){
+        const center = this.character.physicsImpostor.getObjectCenter();
+        const bottom = new Vector3(center.x,center.y - this.character.physicsImpostor.getRadius(),center.z);
+        const direction = new Vector3(0,this.character.physicsImpostor.mass*10*40*animationRatio,0);
+
+        this.character.physicsImpostor.applyForce(direction, bottom);
+    }
+    constructor(character:AbstractMesh,characterSpeed:number,mass:number){
         this.character = character;
         this.characterSpeed = characterSpeed;
-        this.massMultiplier = massMultiplier;
+        this.mass = mass;
         this.pointToMove = this.character.absolutePosition;
         this.move = false;
+        this.velocity = new Vector3();
     }
 }

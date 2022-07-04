@@ -48,7 +48,7 @@ import { Game } from "./game";
 
 var canvas = document.querySelector("canvas");
 
-var engine = new Engine(canvas, true, {preserveDrawingBuffer: true, stencil: true});
+var engine = new Engine(canvas, true, {deterministicLockstep: true, lockstepMaxSteps: 60,preserveDrawingBuffer: true, stencil: true});
 
 engine.enableOfflineSupport = false;
 
@@ -64,7 +64,7 @@ class App{
     scene:Scene;
     guiScene:Scene;
     gui:Gui;
-    model_map:{[key:number]:string};
+    model_map:{[key:string]:string[]};
     my_model:number;
     game:Game;
 
@@ -78,7 +78,7 @@ class App{
         //assets manager and load player meshes
         this.assetsManager = new AssetsManager(this.scene);
         await this.loadPlayerMeshes();
-        await this.loadMaleModels();
+        // await this.loadMaleModels();
 
         var playerMeshesParent = MeshBuilder.CreateBox("playerMeshesParent",{},this.scene);
         const rotationRadius = 10;
@@ -113,7 +113,8 @@ class App{
 
 
         var browserCam = new ArcRotateCamera("browserCam",-1, 1.417, 2,new Vector3(0,1.5,0),this.scene) //1,417, target = 1.5
-        browserCam.radius = this.loaded_player_meshes[0].getBoundingInfo().boundingSphere.maximum.lengthSquared();
+        //browserCam.radius = this.loaded_player_meshes[0].getBoundingInfo().boundingSphere.maximum.lengthSquared();
+        browserCam.radius = 3;
         browserCam.upperBetaLimit = 3*Math.PI/5 //was Math.PI/2
         browserCam.lowerRadiusLimit =1.5;
         browserCam.upperRadiusLimit = 20;
@@ -126,9 +127,11 @@ class App{
 
         var guiPanel = MeshBuilder.CreatePlane("guiPanel",{size:1},this.scene)
         guiPanel.position.y +=1;
-        guiPanel.rotation.y = Math.PI
-        guiPanel.scaling.x = this.loaded_player_meshes[0].getBoundingInfo().boundingSphere.maximum.x*3;
-        guiPanel.scaling.y = this.loaded_player_meshes[0].getBoundingInfo().boundingSphere.maximum.y;
+        guiPanel.rotation.y = Math.PI;
+        guiPanel.scaling.x = 1.5;
+        guiPanel.scaling.y = 1.5;
+        // guiPanel.scaling.x = this.loaded_player_meshes[0].getBoundingInfo().boundingSphere.maximum.x*3;
+        // guiPanel.scaling.y = this.loaded_player_meshes[0].getBoundingInfo().boundingSphere.maximum.y;
         
         const startingAlpha = browserCam.alpha
         //make the panel always face camera
@@ -164,42 +167,7 @@ class App{
             parentRotationAnimation.setEasingFunction(new BezierCurveEase(.64,.22,.39,.84))
             playerMeshesParent.animations.push(parentRotationAnimation);
 
-            /*
-            //guiPanel size animation
-            var guiPanelRotationAnimation = new Animation("guiPanelRotation", "scaling", 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CONSTANT);
-            const guiPanelTargetX = this.loaded_player_meshes[modelAfter].getBoundingInfo().boundingSphere.maximum.x*3
-            const guiPanelTargetY = this.loaded_player_meshes[modelAfter].getBoundingInfo().boundingSphere.maximum.y
-            const guiPanelTargetZ = guiPanel.scaling.z
-            var guiPanelKeyframes = [{
-                frame : 0,
-                value : guiPanel.scaling
-            }, {
-                frame : 50,
-                value : new Vector3(guiPanelTargetX,guiPanelTargetY,guiPanelTargetZ)
-            }];
-            guiPanelRotationAnimation.setKeys(guiPanelKeyframes);
-            guiPanelRotationAnimation.setEasingFunction(new BezierCurveEase(.64,.22,.39,.84))
-            guiPanel.animations.push(guiPanelRotationAnimation);
-
-            //camera radius animation
-            var cameraRadiusAnimation = new Animation("cameraRadius", "radius", 60, Animation.ANIMATIONTYPE_FLOAT, Animation.ANIMATIONLOOPMODE_CONSTANT);
-            const anitargetBoundingBox = this.loaded_player_meshes[modelAfter].getBoundingInfo().boundingBox //fov = 0.8 Math.tan(0.8/2) = 1/2l/r
-            const maxDimenstion = Math.max(anitargetBoundingBox.maximum.x-anitargetBoundingBox.minimum.x,anitargetBoundingBox.maximum.y-anitargetBoundingBox.minimum.y,anitargetBoundingBox.maximum.z-anitargetBoundingBox.minimum.z)
-            const targetRadius = (maxDimenstion+0.5)/(2*Math.sin(browserCam.fov/2))
-            var cameraKeyframes = [{
-                frame : 0,
-                value : browserCam.radius
-            }, {
-                frame : 50,
-                value : targetRadius
-            }];
-            cameraRadiusAnimation.setKeys(cameraKeyframes);
-            cameraRadiusAnimation.setEasingFunction(new BezierCurveEase(.64,.22,.39,.84))
-            browserCam.animations.push(cameraRadiusAnimation);
-
-            this.scene.beginAnimation(browserCam, 0, 50, false, 1);
-            this.scene.beginAnimation(guiPanel, 0, 50, false, 1);
-            */
+            
             this.scene.beginAnimation(playerMeshesParent, 0, 80, false, 1,()=>{animationDone = true;});
         }
         //either animate right or add to queue
@@ -291,7 +259,8 @@ class App{
             this.gameStart();
         });
     }
-    //loads all player meshes for later use
+
+    // loads all player meshes for later use
     async loadPlayerMeshes(): Promise<void>{
         const playermodelMapReq = await fetch("./assets/player_models/playerModelMap.json")
         this.model_map = await playermodelMapReq.json()
@@ -310,6 +279,7 @@ class App{
         })
         await this.assetsManager.loadAsync();
     }
+
     async gameStart(){
         //add game object
         const g = new Game(this.scene,this.guiScene,this.gui,this.assetsManager,this.loaded_player_meshes,this.my_model);
@@ -321,19 +291,50 @@ class App{
         })
         
     }
+    //loads from glb and sorts the models accordingly
     async loadMaleModels(){
+        const males_info = await fetch("./assets/player_models/males_info.json");
+
+        const model_map:{[key:string]:string[]} = await males_info.json();
+
+        this.loaded_player_meshes = {};
+
+        for(let i=0;i<model_map.models.length;i++){
+            const name = model_map.models[i];
+            var parentMesh = new AbstractMesh(name);
+            parentMesh.isVisible = false;
+            this.loaded_player_meshes[name] = parentMesh;
+
+            // console.log("here")
+        }
+        
+
         const mt = this.assetsManager.addMeshTask("addMaleModels","","/assets/player_models/", "Humans_master.glb");
         mt.onSuccess = (task)=>{
+            // console.log(task.loadedSkeletons)
+
             const idleAnimation = task.loadedAnimationGroups.find((anim)=>{if (anim.name==="Idle_Neutral") return(true) })
             idleAnimation.play(true)
 
+
             task.loadedMeshes.forEach((v)=>{
-                v.isVisible = false;
-                //v.createInstance
+                // v.isVisible = false;
+
+                //go over every male model and check which one this part belongs to
+                model_map.models.forEach((name)=>{
+                    if(v.name.includes(name)){
+                        this.loaded_player_meshes[name].addChild(v);
+                    }
+                })
+                model_map.misc.forEach((name)=>{
+                    if(v.name.includes(name)){
+                        v.isVisible=false;
+                    }
+                })
             })
             
         }
-        this.assetsManager.loadAsync();
+        await this.assetsManager.loadAsync();
     }
     constructor(){
         this.modelSelector();

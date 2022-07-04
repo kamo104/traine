@@ -16,7 +16,7 @@ import { PhysicsImpostor } from '@babylonjs/core/Physics/physicsImpostor';
 //materials module
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { Texture } from '@babylonjs/core/Materials/Textures/texture';
-
+import { Material } from "@babylonjs/core/Materials/material";
 //debug
 import { Observer } from "@babylonjs/core";
 
@@ -46,14 +46,13 @@ export class DynamicMap {
     private render_distance: number;
     private physics_render_distance: number;
     private shadow_generator: CascadedShadowGenerator;
-    private groundMaterial: NodeMaterial
-
+    private groundMaterial: StandardMaterial;
 
     loaded_chunks = []; //array of string chunk names
     loaded_chunk_meshes:{[key:string]:AbstractMesh} = {}; //object with convention {eu.$$$ : AbstractMesh} make private
     private ready_for_phys = []; //array of string chunk names
     added_to_phys = []; // make  private
-    private chunk_map;
+    private chunk_map:{[key:string]:{[key:string]:string}};
     version:string
 
     doMapLoading:boolean;
@@ -62,11 +61,17 @@ export class DynamicMap {
         const chunkMapReq = await fetch("./assets/map/" + this.version + "/chunk_info.json") // eu_highqual eu_sliced
         this.chunk_map = await chunkMapReq.json()
     }
-    async loadSpecialMaterial(): Promise<void>{
-        //this.groundMaterial = this.buildGradientMaterial(); //used for building programatically
-        this.groundMaterial = await NodeMaterial.ParseFromFileAsync("groundMaterial","./materials/GmaterialWithFogAndDiff.json",this.scene)
-        //this.groundMaterial = await NodeMaterial.ParseFromFileAsync("groundMaterial","./materials/GmaterialDiff.json",this.scene)
-        this.groundMaterial.backFaceCulling = true;
+    buildGroundMaterial(k:string){
+        var material = new StandardMaterial("eu-mid_diff"+k, this.scene)
+
+        var texture = new Texture("textures/eu-mid/sliced/"+k+".png", this.scene)
+        texture.wrapU = Texture.CLAMP_ADDRESSMODE;
+        texture.wrapV = Texture.CLAMP_ADDRESSMODE;
+        //material.bumpTexture = texture; //maybe add bump sometime
+        material.specularColor = new Color3(0.25, 0.25, 0.25);
+        material.specularPower = 16;
+        material.diffuseTexture = texture;
+        return material;
     }
     buildGradientMaterial() {
         var nodeMaterial = new NodeMaterial(`COPY RAMP FROM`,this.scene);
@@ -125,31 +130,22 @@ export class DynamicMap {
                 const v_p_dist = GMATH.positionDistanceSqrXZ(this.player.absolutePosition,v);
                 if(v_p_dist<(this.render_distance*this.render_distance)){
                     if(!this.loaded_chunks.includes(k)){
-                        this.loaded_chunks.push(k)
-                        var t1 = this.assetsManager.addMeshTask("load map mesh","", "./assets/map/" + this.version + "/obj/",k+".obj");
+                        this.loaded_chunks.push(k);
+                        let t1 = this.assetsManager.addMeshTask("load map mesh","", "./assets/map/" + this.version + "/obj/",k+".obj");
                         t1.onSuccess = (task)=>{
                             const mesh = task.loadedMeshes[0]
-                            mesh.scaling = new Vector3(1,3,1)
+                            mesh.scaling = new Vector3(1.5,1.5,1.5)
                             mesh.position.y -=200
                             mesh.checkCollisions = true;
                             mesh.isPickable=true;
-                            //var material = new StandardMaterial(k, this.scene)
+                            
+                            
+                            mesh.material = this.buildGroundMaterial(k);
 
-                            //var texture = new Texture("textures/eu/"+k+".png", this.scene)
-                            //texture.wrapU = Texture.CLAMP_ADDRESSMODE;
-                            //texture.wrapV = Texture.CLAMP_ADDRESSMODE;
-                            //material.specularColor = new Color3(0.25, 0.25, 0.25);
-                            //material.specularPower = 128;
-                            //material.diffuseTexture = texture;
-
-                            //wasnt added yet//material.bumpTexture = texture; //maybe add bump sometime
-
-
-
-                            mesh.material = this.groundMaterial;
                             
 
                             mesh.freezeWorldMatrix()
+                            
                             this.loaded_chunk_meshes[k] = mesh
 
                             //shadows
@@ -159,10 +155,8 @@ export class DynamicMap {
                     }
                     else if(this.ready_for_phys.includes(k)&&v_p_dist<(this.physics_render_distance*this.physics_render_distance)){
                         this.ready_for_phys.splice(this.ready_for_phys.indexOf(k),1)
-                        
-                        this.loaded_chunk_meshes[k].physicsImpostor = new PhysicsImpostor(this.loaded_chunk_meshes[k], PhysicsImpostor.MeshImpostor, { mass: 0, restitution: 0, friction: 1 }, this.scene);
 
-                        
+                        this.loaded_chunk_meshes[k].physicsImpostor = new PhysicsImpostor(this.loaded_chunk_meshes[k], PhysicsImpostor.MeshImpostor, { mass: 0, restitution: 0, friction: 1 }, this.scene);
 
                         this.shadow_generator.addShadowCaster(this.loaded_chunk_meshes[k], false);
 
@@ -173,25 +167,26 @@ export class DynamicMap {
                         this.loaded_chunk_meshes[k].physicsImpostor.dispose();
                         this.ready_for_phys.push(k);
                         this.shadow_generator.removeShadowCaster(this.loaded_chunk_meshes[k], false);
-                        //delete add_to_shadow_casting[k];
+                        // delete add_to_shadow_casting[k];
                     }
                 }
                 else {
                     if(this.loaded_chunks.includes(k)){
                         try {
                             this.shadow_generator.removeShadowCaster(this.loaded_chunk_meshes[k], false);
+                            if(this.loaded_chunk_meshes[k].material.getActiveTextures())this.loaded_chunk_meshes[k].material.getActiveTextures()[0].dispose();
                             //if(this.loaded_chunk_meshes[k].material.diffuseTexture)this.loaded_chunk_meshes[k].material.diffuseTexture.dispose();
-                            //this.loaded_chunk_meshes[k].material.dispose();
+                            this.loaded_chunk_meshes[k].material.dispose();
                             if(this.loaded_chunk_meshes[k].physicsImpostor)this.loaded_chunk_meshes[k].physicsImpostor.dispose();
                             this.loaded_chunk_meshes[k].dispose()
                             delete this.loaded_chunk_meshes[k]
                             this.loaded_chunks.splice(this.loaded_chunks.indexOf(k),1)
                         } catch (error) {
-                            //buffer_deload.
+                            // buffer_deload.
                         }
                         
-                        //unload here
-                        //console.log("unloaded chunk:", k)
+                        // unload here
+                        // console.log("unloaded chunk:", k)
                     }
                 }
             }
@@ -199,18 +194,24 @@ export class DynamicMap {
 
         });
     }
-    //function to load map based on the players position
+    // function to load map based on the players position
     async loadMap(continuous?:boolean): Promise<void>{
-        // ?? add unload buffer and spawn area loading before giving controlls
-        ///////////////////////////////////////////////////////////////////
-        //load new chunks based on the players location
-        await this.loadSpecialMaterial();
+
+        // loads chunks initially
         await this.mapLoadingLogic();
         await this.assetsManager.loadAsync();
+
+        // adds shadows
+        await this.mapLoadingLogic();
+
+        // adds physics
+        await this.mapLoadingLogic();
+
+        // whenever a new chunk is being loaded dont display the loading screen
         this.assetsManager.useDefaultLoadingScreen = false;
         this.doMapLoading = true;
         if(typeof(continuous)==="undefined"||continuous){
-            var j=0;
+            let j=0;
             this.scene.onBeforeRenderObservable.add(()=>{
                 if(j%60&&this.doMapLoading){
                     this.mapLoadingLogic();
@@ -218,8 +219,8 @@ export class DynamicMap {
                 }
                 j+=1;
             })
-            //setInterval(()=>{this.mapLoadingLogic()},1000);
-            //setInterval(()=>{this.assetsManager.loadAsync()},1000);
+            // setInterval(()=>{this.mapLoadingLogic()},1000);
+            // setInterval(()=>{this.assetsManager.loadAsync()},1000);
         }
     }
     async reloadMap(){
@@ -252,8 +253,9 @@ export class DynamicMap {
                 assetsManager: AssetsManager,
                 render_distance: number,
                 physics_render_distance: number,
-                shadow_generator: CascadedShadowGenerator,version?:string){
-
+                shadow_generator: CascadedShadowGenerator,
+                version?:string){
+                    
                     this.player = player;
                     this.scene = scene;
                     this.assetsManager = assetsManager
