@@ -1,5 +1,7 @@
 # traine
 
+Uses a great header library for images from https://github.com/nothings/stb
+
 This program uses multiprocessing to create distance image for every pixel of water to shore lines.
 
 The algorithm used first finds all the shore points and then runs in chunks of the image finding the nearest shore point to a pixel.
