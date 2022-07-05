@@ -7,4 +7,8 @@ Then after adding map models, .json file with their location information and cha
 
 npm run build
 
-Files created in the build section should work.
+Files created in the build section should work alongside a file serving server.
+
+Running a local dev version is also possible via:
+
+npm run start
