@@ -1,4 +1,4 @@
-# traine
+# Image processing
 
 Uses a great header library for images from https://github.com/nothings/stb
 
