@@ -1,0 +1,20 @@
+const path = require('path');
+const fs = require("fs");
+const nodeExternals = require('webpack-node-externals');
+
+module.exports = {
+  target: 'node',
+  externals: [nodeExternals()], 
+  entry: './server_build/back_server.js', 
+  output: {
+    path: path.join(__dirname, 'server_bundle'), 
+    filename: 'back_server.js',
+  },
+  resolve: {
+    extensions: ["", ".tsx", ".ts", ".js"]
+},
+  optimization: {
+    minimize: false, 
+  },
+  mode:"production"
+};

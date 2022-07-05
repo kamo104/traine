@@ -145,8 +145,8 @@ export class TraineConsole{
                             }
                             case("set"):{
                                 this.timeManager.setTime(fields[2]);
-                                this.server.emit("timeChange",fields[2])
-                                console.log("Time set to: ", fields[2]);
+                                this.server.emit("timeChange",Number(fields[2]))
+                                console.log("Time set to: ", Number(fields[2]));
                                 break;
                             }
                         }
