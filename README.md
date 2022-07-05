@@ -1,6 +1,6 @@
 # Image processing
 
-Uses a great header library for images from https://github.com/nothings/stb
+This program uses a great header library for images from https://github.com/nothings/stb
 
 This program uses multiprocessing to create distance image for every pixel of water to shore lines.
 
