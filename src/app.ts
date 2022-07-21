@@ -66,6 +66,8 @@ class App{
     gui:Gui;
     model_map:{[key:string]:string[]};
     my_model:number;
+    my_name:string;
+
     game:Game;
 
     
@@ -134,6 +136,7 @@ class App{
         // guiPanel.scaling.y = this.loaded_player_meshes[0].getBoundingInfo().boundingSphere.maximum.y;
         
         const startingAlpha = browserCam.alpha
+
         //make the panel always face camera
         this.scene.onBeforeRenderObservable.add(()=>{
             guiPanel.rotation.y = (2*Math.PI)*Math.floor((browserCam.alpha-startingAlpha)/(2*Math.PI)) -(browserCam.alpha-startingAlpha)-startingAlpha+Math.PI/2;
@@ -145,7 +148,7 @@ class App{
         var animationDone = true;
         var animQueue =0;
 
-        //function to model switching
+        //function for animation of character switching in selection
         //*direction is either 1 or -1
         const animateSelectionChange = (direction:number,modelBefore:number)=>{
             var modelAfter = (modelBefore+direction)%(Object.keys(this.loaded_player_meshes).length);
@@ -252,10 +255,11 @@ class App{
 
         //get rid of the temporary scene and set meshes options to default, initialize the game
         this.gui.gameStartButton.onPointerClickObservable.add(()=>{
+            this.my_name = this.gui.nameInput.text;
             disposeModelSelector()
-    
+            // if(this.my_name === "" || this.my_name === "Input your name") this.my_name = this.generateRandomName();
             if(this.my_model<0) this.my_model = Object.keys(this.loaded_player_meshes).length+this.my_model;
-            console.log("Player has chosen model nr:",this.my_model)
+            // console.log("Player has chosen model nr:",this.my_model)
             this.gameStart();
         });
     }
@@ -280,9 +284,10 @@ class App{
         await this.assetsManager.loadAsync();
     }
 
+    // starts the game by creating a game object and running a render loop
     async gameStart(){
         //add game object
-        const g = new Game(this.scene,this.guiScene,this.gui,this.assetsManager,this.loaded_player_meshes,this.my_model);
+        const g = new Game(this.scene,this.guiScene,this.gui,this.assetsManager,this.loaded_player_meshes,this.my_model, this.my_name);
         await g.gameStart();
         g.inspectorInit(this.scene);
         engine.runRenderLoop(()=>{

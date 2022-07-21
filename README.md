@@ -1,14 +1,21 @@
 # traine
-Implementing a custom client would require making all the map models and textures, since their size would be too big to include in this repository.
+Implementing a custom client would require making all the map models and textures.
 
-You can clone the repo and run: npm install
+public/assets/map/eu_mid/chunk_info.json    // {"eu.0480": {"x": 3720.41, "y": -131, "z": -1756},...}
 
-Then after adding map models, .json file with their location information and changing names in the source code after building:
+public/assets/map/eu_mid/obj/eu.####.obj    // for each 3d chunk mesh, where #### are chunk numbers from chunk_info.json
 
-npm run build
+public/textures/eu-mid/sliced/eu.####.png   // for diffuse textures, where #### are chunk numbers from chunk_info.json
 
-Files created in the dist folder should work alongside a file serving server.
 
-Running a local dev version is also possible via:
+Maybe someday I will host original 3d objects, textures and materials but for now I'm more focused on the developement.
+
+
+You can clone the repo and run: 
+
+npm install
+
+
+Running a local dev version is possible after adding all mentioned files via:
 
 npm run start

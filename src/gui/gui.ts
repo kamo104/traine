@@ -5,12 +5,17 @@ import { Container } from "@babylonjs/gui/2D/controls/container";
 import { Rectangle } from "@babylonjs/gui/2D/controls/rectangle";
 //import { Grid } from "@babylonjs/gui/2D/controls/grid"
 import {InputText} from "@babylonjs/gui/2D/controls/inputText"
+import { TextBlock } from "@babylonjs/gui/2D/controls/textBlock"
 import { Scene } from "@babylonjs/core/scene";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh"
+import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder"
+import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+
 
 export class BasicGui{
     createSimpleButton(direction:string){
-        var button = Button.CreateImageOnlyButton("button","./textures/icons/arrow_" +direction+".svg");
+        const button = Button.CreateImageOnlyButton("button","./textures/icons/arrow_" +direction+".svg");
         switch(direction){
             case("left"):{
                 button.horizontalAlignment = 0;
@@ -71,12 +76,73 @@ export class ModelSelectorGui extends BasicGui{
     }
 }
 
+export class GameGui extends BasicGui{
+    gui:AdvancedDynamicTexture;
 
+    playerTextCollection:{[key:string]:TextBlock};
+    private scene:Scene;
+    // disposes of the player textblock
+    removePlayerText(id: string){
+        this.playerTextCollection[id].dispose();
+        delete this.playerTextCollection[id];
+    }
+    // updates id of the given player with index
+    updateId(id:string, new_id:string){
+        if(this.playerTextCollection[id]===undefined) return;
 
+        const playerTextBlock = this.playerTextCollection[id];
+        delete this.playerTextCollection[id];
+        let oldName = playerTextBlock.text;
+        oldName = oldName.substring(0,oldName.length-id.length);
+        playerTextBlock.text = oldName + new_id;
+        this.playerTextCollection[new_id] = playerTextBlock;
+    }
 
+    // creates basic name and id on top of player using 
+    createPlayerText(player:AbstractMesh, name:string, id:string){
+        
+        const info = player.getBoundingInfo();
+        const ySize = info.boundingBox.extendSize.y*2;
+        const offsetY = 0.2;
+        const text = name + " #" + id;
 
+        let planeLocation = new Vector3(0,ySize + offsetY,0);
 
+        // let planeLocation = player.absolutePosition;
+        // planeLocation.y = info.boundingBox.centerWorld.y + ySize + offsetY;
 
+        // const guiPlane = MeshBuilder.CreatePlane(player.name + " gui", {width:text.length*0.7,height:2}, this.scene);
+        // guiPlane.scaling = new Vector3(6,6,6);
+
+        const guiPlane = MeshBuilder.CreatePlane(player.name + " gui", {}, this.scene);
+        guiPlane.isVisible = false;
+
+        const hoverText = new TextBlock(player.name + " name id", text);
+        
+        hoverText.color = "white";
+        
+        // var playerGui = AdvancedDynamicTexture.CreateForMesh(guiPlane);
+
+        // playerGui.addControl(hoverText)
+        this.gui.addControl(hoverText);
+        hoverText.linkWithMesh(guiPlane);
+        hoverText.isPointerBlocker = false;
+        // hoverText.zIndex = 0;
+
+        guiPlane.setParent(player, true);
+        guiPlane.position = planeLocation;
+        // guiPlane.rotation.y = Math.PI;
+        this.playerTextCollection[id] = hoverText;
+
+        return hoverText;
+    }
+    constructor(scene:Scene){
+        super();
+        this.playerTextCollection = {};
+        this.scene = scene;
+        this.gui = AdvancedDynamicTexture.CreateFullscreenUI("myUI",true,this.scene);
+    }
+}
 
 
 
@@ -85,7 +151,11 @@ export class ModelSelectorGui extends BasicGui{
 export class Gui{
     gui:AdvancedDynamicTexture;
     gameStartButton:Button;
+    nameInput:InputText;
     private scene:Scene;
+    
+    
+
     guiInit(){
                 
         this.gui = AdvancedDynamicTexture.CreateFullscreenUI("myUI",true,this.scene);
@@ -95,6 +165,7 @@ export class Gui{
         rightMenuContainer.height =1;
         rightMenuContainer.width = 0.5;
         rightMenuContainer.horizontalAlignment = 1;
+        rightMenuContainer.zIndex = 1000;
         rightMenuContainer.isPointerBlocker = false; //was true
         //rightMenuContainer.background = "black";
 
@@ -149,7 +220,7 @@ export class Gui{
         input.fontSize = 25;
         input.zIndex = 0;
         input.placeholderText = "Input your name";
-        
+        this.nameInput = input;
 
         var b3 = Button.CreateSimpleButton("options","Options");
         b3.width = 0.2*10/5;
@@ -183,7 +254,7 @@ export class Gui{
         //rightMenuContainer.addControl(inputText)
         rightMenuContainer.addControl(input);    
         rightMenuContainer.addControl(b2);
-        rightMenuContainer.addControl(button);
+        // rightMenuContainer.addControl(button);
         
         this.gui.addControl(rightMenuContainer);
         

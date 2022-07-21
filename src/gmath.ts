@@ -50,6 +50,9 @@ export function positionDistanceSqrXZ(p1,p2){ //only xz
 export function positionAverage(p1,p2){
     return({x:(p1.x+p2.x)/2,y:(p1.y+p2.y)/2,z:(p1.z+p2.z)/2})
 }
+export function rotationAverage(r1,r2){
+    return({x:(r1.x+r2.x)/2,y:(r1.y+r2.y)/2,z:(r1.z+r2.z)/2})
+}
 
 // export function positionAverage(...args:SimpleVector[]){
 //     const xsum = smartSum("x", args);
@@ -61,6 +64,9 @@ export function positionAverage(p1,p2){
 
 export function deltaPosition(p1,p2){
     return({x:p1.x-p2.x,y:p1.y-p2.y,z:p1.z-p2.z})
+}
+export function deltaRotation(r1,r2){
+    return({x:r1.x-r2.x,y:r1.y-r2.y,z:r1.z-r2.z})
 }
 export function deltaQuaterion(p1,p2){
     return({x:p1.x-p2.x,y:p1.y-p2.y,z:p1.z-p2.z,w:p1.w-p2.w})
