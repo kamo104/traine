@@ -48,7 +48,7 @@ export class TraineConsole{
                                 Object.entries(this.channelMap).forEach(([k,v])=>{
                                     v.socket.disconnect(true);
                                 });
-                                console.log("kicked all players!");
+                                console.log("kicked all players");
                                 break;
                             }
                         }
