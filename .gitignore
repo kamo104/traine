@@ -1,6 +1,12 @@
+<<<<<<< HEAD
 client/node_modules
 client/public/textures
 client/public/assets
 client/public/materials
 client/dist
 
+=======
+server/node_modules
+server/server_build
+server/server_bundle
+>>>>>>> server
