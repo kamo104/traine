@@ -62,9 +62,9 @@ export class DynamicMap {
         this.chunk_map = await chunkMapReq.json()
     }
     buildGroundMaterial(k:string){
-        var material = new StandardMaterial("eu-mid_diff"+k, this.scene)
+        var material = new StandardMaterial("eu_mid_diff"+k, this.scene)
 
-        var texture = new Texture("textures/eu-mid/sliced/"+k+".png", this.scene)
+        var texture = new Texture("textures/eu_mid/sliced/"+k+".png", this.scene)
         texture.wrapU = Texture.CLAMP_ADDRESSMODE;
         texture.wrapV = Texture.CLAMP_ADDRESSMODE;
         //material.bumpTexture = texture; //maybe add bump sometime
