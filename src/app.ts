@@ -287,9 +287,9 @@ class App{
     // starts the game by creating a game object and running a render loop
     async gameStart(){
         //add game object
-        const g = new Game(this.scene,this.guiScene,this.gui,this.assetsManager,this.loaded_player_meshes,this.my_model, this.my_name);
-        await g.gameStart();
-        g.inspectorInit(this.scene);
+        this.game = new Game(this.scene,this.guiScene,this.gui,this.assetsManager,this.loaded_player_meshes,this.my_model, this.my_name);
+        await this.game.gameStart();
+        // this.game.inspectorInit(this.scene);
         engine.runRenderLoop(()=>{
             this.scene.render();
             this.guiScene.render();
@@ -346,6 +346,6 @@ class App{
     }
 }
 
-let c = new App(); 
+let app = new App();
 
 

@@ -360,12 +360,15 @@ export class Game{
     //adds player name and id on top of this.player
     addPlayerGui(id:string){
         const mainPlayerText = this.gameGui.createPlayerText(this.player, this.my_name, id);
-        this.scene.onBeforeRenderObservable.add(()=>{
+        const minimalScale = 0.5;
+        const scaleDistance = 30;
+        
+        this.scene.onBeforeCameraRenderObservable.add(()=>{
             let distToCam = this.camera.radius;
-            if(distToCam>=30)distToCam=30;
-            distToCam/=30;
-            mainPlayerText.scaleX = 1.5-distToCam;
-            mainPlayerText.scaleY = 1.5-distToCam;
+            if(distToCam>=scaleDistance)distToCam=scaleDistance;
+            distToCam/=scaleDistance;
+            mainPlayerText.scaleX = minimalScale+1-distToCam;
+            mainPlayerText.scaleY = minimalScale+1-distToCam;
         })
     }
 
