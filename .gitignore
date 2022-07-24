@@ -1,3 +1,3 @@
-node_modules
-server_build
-server_bundle
+server/node_modules
+server/server_build
+server/server_bundle
