@@ -62,19 +62,24 @@ export class ChannelInfo {
     data:PlayerData;
     playerInfo:PlayerInfo;
     ip:string | string[] | undefined;
+    connectionTime:number;
     constructor(
         socket:Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
         data:PlayerData,
         playerInfo:PlayerInfo,
-        ip:string | string[] | undefined
+        ip:string | string[] | undefined,
+        connectionTime:number
         ){
         this.socket=socket;
         this.data = data;
         this.playerInfo = playerInfo;
         this.ip = ip;
+        this.connectionTime = connectionTime;
     }
 }
 
 
 export type Id_index = Record<string|number,number|string>;
 export type ChannelMap = Record<string,ChannelInfo>;
+
+export type ServerOptions = {name:{maxLength:number}}

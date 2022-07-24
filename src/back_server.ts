@@ -1,24 +1,33 @@
-import { Server } from "socket.io"
+import { Server as SocketServer } from "socket.io"
 
 var http = require("http");
 var fs = require('fs');
+
 import { Semaphore } from "async-mutex"
 import { TraineConsole } from "./my_modules/traine_console";
 
-import {ChannelInfo, PlayerData, PlayerInfo ,Id_index, ChannelMap, SimpleVector, PlayerSendInfo} from "./my_types/types"
+import {ChannelInfo, PlayerData, PlayerInfo ,Id_index, ChannelMap, SimpleVector, PlayerSendInfo, ServerOptions} from "./my_types/types"
 import { TimeManager } from "./my_modules/time_manager";
 
-const httpServer = http.createServer();
-const io = new Server(httpServer, {
-    cors: {
-      origin: "traine.servegame.com", // "traine.servegame.com"
-    },
-  });
 
+// create http server
+const httpServer = http.createServer();
+
+// initialize socket io server
+const io = new SocketServer(httpServer, {
+    cors: {
+      origin: "traine.servegame.com", // "traine.servegame.com"  |  "*"
+    }
+});
+
+// start listening on http
 httpServer.listen(3000,()=>{
 	console.log("listening on port: 3000");
 });
 
+
+let serverOptions:ServerOptions;
+import("./serverOptions.json").then((result)=>{serverOptions=result});
 
 var i=0;
 const id_index: Id_index = {};
@@ -39,11 +48,10 @@ function isPlayerdataValid(event){
 
 function isPlayerInfoValid(playerInfo){
     if(
-        playerInfo===undefined||
-        playerInfo.model===undefined||playerInfo.name===undefined // ||
-        // typeof(playerInfo.model)!=="number"||typeof(playerInfo.name)!=="string"||
-        // isNaN(playerInfo.model)
-
+        playerInfo===undefined ||
+        playerInfo.model===undefined || playerInfo.name===undefined ||
+        // typeof(playerInfo.model)!=="number" || typeof(playerInfo.name)!=="string" ||
+        isNaN(Number(playerInfo.model)) || serverOptions.name.maxLength < String(playerInfo.name).length
         ) return false;
     return true;
 }
@@ -52,7 +60,10 @@ const timeManager = new TimeManager(true);
 
 const con = new TraineConsole(id_index,channelMap,timeManager, io);
 
+// handle new connection on socket io
 io.on("connection", channel => {
+
+    // responsible for sending all current players on connection
     async function sendCurrentPlayers(){
         const players:{[key:number]:PlayerInfo} = {};
         Object.entries(channelMap).forEach(([k,v])=>{
@@ -64,40 +75,50 @@ io.on("connection", channel => {
         })
         io.emit("currentPlayers", players)
     }
+
+    // when a player sends his info add it to channelMap and unmark dirty
     function addPlayerInfo(playerInfo:PlayerInfo){
         if(!isPlayerInfoValid(playerInfo)) channel.emit("invalidPlayerInfo");
 
         channelMap[channel.id].playerInfo.model = playerInfo.model;
         channelMap[channel.id].playerInfo.name = playerInfo.name;
         channelMap[channel.id].playerInfo.dirty = false;
-        io.emit("player_joined", new PlayerSendInfo(Number(id_index[channel.id]),playerInfo.model,playerInfo.name), {reliable:true}) // {id:id_index[channel.id],model:playerInfo.model,name:playerInfo.name}, {reliable:true});
+        io.emit("player_joined", new PlayerSendInfo(Number(id_index[channel.id]),playerInfo.model,playerInfo.name), {reliable:true})
     }
 
+    // when asked for time resopond with server time
     function handleTimeRequest(){
         channel.emit("timeResponse", timeManager.getTime(),{reliable: true});
     }
 
+    // when asked for dayNightCycle return a boolean value
     function handleDayNightCycleRequest(){
         channel.emit("dayNightCycleResponse", timeManager.cycle.get(),{reliable: true});
     }
 
+    // when a player disconnects emit a global message, print to console and delete him from memory
     async function handleDisconnect(){
         io.emit("player_left",id_index[channel.id])
-        console.log(channelMap[channel.id].ip, ": user left, id :", id_index[channel.id])
+        console.log(
+            channelMap[channel.id].ip, ": user left, id :", id_index[channel.id], 
+            "time of connection :", String((Date.now() - channelMap[channel.id].connectionTime)/1000) + "s");
+
         //delete i and socket id
         delete channelMap[channel.id];
         delete id_index[id_index[channel.id]];
         delete id_index[channel.id];
     }
+
+    // when getting position data, check it's validity and save it
     async function handleUpdate(event){
 		if(isPlayerdataValid(event)){
             const position = new SimpleVector(event.position.x,event.position.y,event.position.z);
             const rotation = new SimpleVector(event.rotation.x,event.rotation.y,event.rotation.z);
             channelMap[channel.id].data = new PlayerData(position,rotation);
-
-			// channelMap[channel.id].data = {position:{x:event.position.x,y:event.position.y,z:event.position.z}, rotation:{x:event.rotation.x,y:event.rotation.y,z:event.rotation.z,w:event.rotation.w}};
 		}
     }
+
+    // 
     semaphore.runExclusive(()=>{
     	//remeber i and map the channel
         id_index[channel.id] =i;
@@ -107,15 +128,14 @@ io.on("connection", channel => {
         const ip =  channel.handshake.headers["x-forwarded-for"];
         const data = new PlayerData(new SimpleVector(0,1000,0),new SimpleVector(0,0,0));
         const info = new PlayerInfo(NaN,"",true);
-        channelMap[channel.id]= new ChannelInfo(channel,data,info,ip);
-
-        // channelMap[channel.id]={socket:channel,data:{position:{x:0,y:1000,z:0},rotation:{x:0,y:0,z:0}},ip:channel.handshake.headers["x-forwarded-for"],playerInfo:{model:NaN,name:""}};
+        channelMap[channel.id]= new ChannelInfo(channel,data,info,ip, Date.now());
         
         i+=1;
         channel.emit("my_id", i-1,{reliable: true});
         console.log(channelMap[channel.id].ip, ": connected with id :", id_index[channel.id]);
         
     })
+
     channel.on("playerInfo", addPlayerInfo);
 
     channel.on("disconnect",handleDisconnect);
@@ -149,7 +169,7 @@ const sendUpdate = ()=>{
     Object.entries(channelMap).forEach(([k1,v1]) => {
         let sender = {};
         Object.entries(channelMap).forEach(([k2,v2])=>{
-            //if within 275 squared from player add him to working list and send socket emit
+            //if within render_distance_sq from player add him to working object
 			if(v2.data.position&&v1.data.position&&k2!=k1){
 				if(render_distance_sq>distance_sq(v1.data.position,v2.data.position)){
 					sender[id_index[k2]] = v2.data;

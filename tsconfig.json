@@ -8,7 +8,8 @@
         "removeComments": true,
         "preserveConstEnums": true,
         "strictNullChecks": true,
-        "outDir": "server_build"
+        "outDir": "server_build",
+        "resolveJsonModule": true,
     },
     "include": ["src"]
   }
