@@ -1,0 +1,5 @@
+{
+	"models":["Adventurer","Beach","Casual2","Casual","Farmer","King","Punk","SpaceSuit","Suit","Swat","Worker"],
+	"misc":["Backpack","Sword","Pistol","Horse_Head"],
+	"bodyParts":["Body","Feet","Head","Legs"]
+}
