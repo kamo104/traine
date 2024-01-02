@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+
+        html, body {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            text-align:center;
+            background-color: slategray;
+        }
+
+
+        
+        canvas {
+            height: 100%;
+            width: 100%;
+            display: inline;
+        }
+        
+
+        label {
+        display: block;
+        font: 1rem 'Fira Sans', sans-serif;
+        }
+
+        input,
+        label {
+            margin: 0.4rem 0;
+        }
+
+
+        </style>
+    </head>
+    <body>
+        <div>
+            <label for="height-input">Pick a water line height:</label>
+            <input id="height-input" type="range" min="0" max="1" value="0.5" step="0.01">
+        </div>
+        <div>
+            <label for="file-selector">Upload an image to process:</label>
+            <input id="file-selector" type="file" single accept=".jpg, .jpeg, .png, .tiff">
+        </div>
+        
+        
+        <div>
+            <label for="image-preview">Selected image:</label>
+            <img id="image-preview" height="50%" width="50%">
+        </div>
+        
+        <div>
+            <label for="output-preview">Generated image:</label>
+            <canvas id="output-preview"></canvas>
+        </div>
+
+        <canvas id="canvas" style="width:50%; height:50%"></canvas>
+
+        
+
+        
+
+        <script type="text/javascript" src="./index.js"></script>
+    </body>

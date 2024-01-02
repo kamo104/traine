@@ -1,0 +1,23 @@
+{
+  "name": "traine-backend",
+  "version": "1.0.0",
+  "description": "backend for the best game ever",
+  "main": "back_server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "bundle": "tsc && webpack",
+    "start": "node ./server_bundle/back_server.js"
+  },
+  "author": "grzymo",
+  "license": "ISC",
+  "dependencies": {
+    "async-mutex": "^0.3.2",
+    "socket.io": "^4.5.3"
+  },
+  "devDependencies": {
+    "typescript": "^4.8.4",
+    "webpack": "^5.73.0",
+    "webpack-cli": "^4.10.0",
+    "webpack-node-externals": "^3.0.0"
+  }
+}

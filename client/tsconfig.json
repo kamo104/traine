@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "target": "es2017",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "noResolve": false,
+    "noImplicitAny": false,
+    "sourceMap": true,
+    "preserveConstEnums":true,
+    "lib": [
+        "dom",
+        "es6",
+        "es2018"
+    ],
+    "types": [
+      "babylonjs",
+      "webpack-env"
+    ],
+    "rootDir": "src",
+    "resolveJsonModule": true
+  }
+}

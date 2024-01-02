@@ -1,0 +1,4 @@
+# [submodule "ClientBuild"]
+#     path = client/dist/
+#     url = https://github.com/kamo104/traine.git
+#     branch = client-build
