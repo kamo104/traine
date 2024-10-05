@@ -47,9 +47,9 @@ class App{
     readyPromise: Promise<void>;
 
     async init() {
-        if (!navigator.gpu) {
-            throw Error("WebGPU not supported.");
-        }
+        // if (!navigator.gpu) {
+        //     throw Error("WebGPU not supported.");
+        // }
     
         const adapter = await navigator.gpu.requestAdapter();
         console.log(adapter.limits)
@@ -57,8 +57,10 @@ class App{
             throw Error("Couldn't request WebGPU adapter.");
         }
         const myDev:GPUDeviceDescriptor = {"requiredLimits":{
-            "maxBufferSize":1073741824,
-            "maxStorageBufferBindingSize":1073741824,
+            // "maxBufferSize":1073741824,
+            "maxBufferSize":2147483644,
+            // "maxStorageBufferBindingSize":1073741824,
+            "maxStorageBufferBindingSize":2147483644,
             "maxComputeWorkgroupSizeX":32,
             "maxComputeWorkgroupSizeY":32,
             "maxComputeInvocationsPerWorkgroup":1024}};
@@ -249,7 +251,7 @@ class App{
         passEncoder.setPipeline(computePipeline);
         passEncoder.setBindGroup(0, bindGroup);
         const workgroupCount = this.inputImage.width*this.inputImage.height/(32*32);
-        passEncoder.dispatchWorkgroups(workgroupCount);
+        passEncoder.dispatchWorkgroups(workgroupCount/2,workgroupCount/2);
         passEncoder.end();
 
         
